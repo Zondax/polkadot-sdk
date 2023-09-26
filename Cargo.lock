@@ -12527,6 +12527,7 @@ dependencies = [
  "sp-runtime",
  "substrate-frame-rpc-system",
  "substrate-state-trie-migration-rpc",
+ "zondax",
 ]
 
 [[package]]
@@ -12886,6 +12887,7 @@ dependencies = [
  "tracing-gum",
  "westend-runtime",
  "westend-runtime-constants",
+ "zondax",
 ]
 
 [[package]]
@@ -20840,6 +20842,13 @@ dependencies = [
  "tokio-tungstenite",
  "tracing-gum",
  "url",
+]
+
+[[package]]
+name = "zondax"
+version = "0.1.0"
+dependencies = [
+ "sp-api",
 ]
 
 [[package]]
