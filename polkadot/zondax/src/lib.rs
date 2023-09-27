@@ -1,11 +1,12 @@
-use std::sync::Arc;
 use jsonrpsee::{
-	core::{async_trait, Error as JsonRpseeError, RpcResult},
+	core::{async_trait, RpcResult},
 	proc_macros::rpc,
-	types::{error::CallError, ErrorObject},
 };
 use sc_rpc_api::DenyUnsafe;
-use codec::{Encode, Decode};
+
+mod scale;
+
+use scale::{scale_encode, ScaleMsg};
 
 // ZONDAX STUFF
 // sp_api::decl_runtime_apis! {
@@ -22,14 +23,10 @@ pub struct Zondax {
 
 impl Zondax {
 	/// Creates a new instance of the Babe Rpc handler.
-	pub fn new(
-		deny_unsafe: DenyUnsafe,
-	) -> Self {
+	pub fn new(deny_unsafe: DenyUnsafe) -> Self {
 		Self { deny_unsafe }
 	}
 }
-
-
 
 /// Provides rpc methods for interacting with Zondax.
 #[rpc(client, server)]
@@ -39,8 +36,8 @@ pub trait ZondaxApi {
 	async fn say_hello_world(&self) -> RpcResult<String>;
 
 	/// Returns SCALE encoded value
-	#[method(name = "zondax_encode")]
-	async fn encode(&self, test: u32) -> RpcResult<String>;
+	#[method(name = "scale_encode")]
+	async fn encode(&self, test: ScaleMsg) -> RpcResult<String>;
 }
 
 #[async_trait]
@@ -49,9 +46,12 @@ impl ZondaxApiServer for Zondax {
 		Ok("Hello Zondax".to_string())
 	}
 
-	async fn encode(&self, test: u32) -> RpcResult<String> {
-		let result = test.encode();
+	async fn encode(&self, test: ScaleMsg) -> RpcResult<String> {
+		// Called to avoid no_used warnings.
+		// this is not necessary as calling encode does not pose any security risk for the node under testing
+		// and the rpc endpoint is not meant to be active in production nodes.
+		_ = self.deny_unsafe.check_if_safe();
 
-		Ok(hex::encode(result))
+		Ok(scale_encode(test))
 	}
 }
