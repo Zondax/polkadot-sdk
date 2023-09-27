@@ -70,6 +70,9 @@ jemalloc-allocator = [
 ci-only-tests = [ "polkadot-node-core-pvf/ci-only-tests" ]
 network-protocol-staging = [ "polkadot-cli/network-protocol-staging" ]
 
+# Enables polkadot-specification check endpoints 
+specs-tests = ["polkadot-cli/specs-tests"]
+
 # Configuration for building a .deb package - for use with `cargo-deb`
 [package.metadata.deb]
 name = "polkadot"

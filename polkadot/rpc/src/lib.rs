@@ -123,6 +123,8 @@ where
 	use sc_consensus_grandpa_rpc::{Grandpa, GrandpaApiServer};
 	use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
 	use substrate_state_trie_migration_rpc::{StateMigration, StateMigrationApiServer};
+
+	#[cfg(feature = "specs-tests")]
 	use zondax::{Zondax, ZondaxApiServer};
 
 	let mut io = RpcModule::new(());
@@ -174,6 +176,7 @@ where
 		.into_rpc(),
 	)?;
 
+	#[cfg(feature = "specs-tests")]
 	io.merge(Zondax::new(deny_unsafe).into_rpc())?;
 
 	Ok(io)

@@ -12887,7 +12887,6 @@ dependencies = [
  "tracing-gum",
  "westend-runtime",
  "westend-runtime-constants",
- "zondax",
 ]
 
 [[package]]
@@ -20852,6 +20851,7 @@ dependencies = [
  "jsonrpsee",
  "parity-scale-codec",
  "sc-rpc-api",
+ "serde",
  "sp-api",
 ]
 
