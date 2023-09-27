@@ -9,3 +9,5 @@ repository.workspace = true
 
 [dependencies]
 sp-api = { path = "../../substrate/primitives/api" }
+jsonrpsee = { version = "0.16.2", features = ["client-core", "server", "macros"] }
+sc-rpc-api = { path = "../../substrate/client/rpc-api" }

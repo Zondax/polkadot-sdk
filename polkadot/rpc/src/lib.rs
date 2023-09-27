@@ -35,7 +35,6 @@ use sp_consensus::SelectChain;
 use sp_consensus_babe::BabeApi;
 use sp_keystore::KeystorePtr;
 use txpool_api::TransactionPool;
-use zondax::ZondaxApi;
 
 /// A type representing all RPC extensions.
 pub type RpcExtension = RpcModule<()>;
@@ -111,7 +110,6 @@ where
 	C::Api: pallet_transaction_payment_rpc::TransactionPaymentRuntimeApi<Block, Balance>,
 	C::Api: BabeApi<Block>,
 	C::Api: BlockBuilder<Block>,
-	C::Api: ZondaxApi<Block>,
 	P: TransactionPool + Sync + Send + 'static,
 	SC: SelectChain<Block> + 'static,
 	B: sc_client_api::Backend<Block> + Send + Sync + 'static,
@@ -125,6 +123,7 @@ where
 	use sc_consensus_grandpa_rpc::{Grandpa, GrandpaApiServer};
 	use sc_sync_state_rpc::{SyncState, SyncStateApiServer};
 	use substrate_state_trie_migration_rpc::{StateMigration, StateMigrationApiServer};
+	use zondax::{Zondax, ZondaxApiServer};
 
 	let mut io = RpcModule::new(());
 	let BabeDeps { babe_worker_handle, keystore } = babe;
@@ -174,6 +173,8 @@ where
 		)?
 		.into_rpc(),
 	)?;
+
+	io.merge(Zondax::new(deny_unsafe).into_rpc())?;
 
 	Ok(io)
 }

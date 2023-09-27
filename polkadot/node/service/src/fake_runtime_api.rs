@@ -396,11 +396,4 @@ sp_api::impl_runtime_apis! {
 			unimplemented!()
 		}
 	}
-
-	// Zondax test
-	impl zondax::ZondaxApi<Block> for Runtime {
-		fn say_hello_world() -> String {
-			"Hello Zondax".to_string()
-		}
-	}
 }
