@@ -20848,7 +20848,9 @@ dependencies = [
 name = "zondax"
 version = "0.1.0"
 dependencies = [
+ "hex",
  "jsonrpsee",
+ "parity-scale-codec",
  "sc-rpc-api",
  "sp-api",
 ]

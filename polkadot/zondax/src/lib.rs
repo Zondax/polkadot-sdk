@@ -5,6 +5,7 @@ use jsonrpsee::{
 	types::{error::CallError, ErrorObject},
 };
 use sc_rpc_api::DenyUnsafe;
+use codec::{Encode, Decode};
 
 // ZONDAX STUFF
 // sp_api::decl_runtime_apis! {
@@ -36,11 +37,21 @@ pub trait ZondaxApi {
 	/// Returns 'Hello Zondax'.
 	#[method(name = "zondax_helloWorld")]
 	async fn say_hello_world(&self) -> RpcResult<String>;
+
+	/// Returns SCALE encoded value
+	#[method(name = "zondax_encode")]
+	async fn encode(&self, test: u32) -> RpcResult<String>;
 }
 
 #[async_trait]
 impl ZondaxApiServer for Zondax {
 	async fn say_hello_world(&self) -> RpcResult<String> {
 		Ok("Hello Zondax".to_string())
+	}
+
+	async fn encode(&self, test: u32) -> RpcResult<String> {
+		let result = test.encode();
+
+		Ok(hex::encode(result))
 	}
 }
