@@ -1766,7 +1766,7 @@ dependencies = [
  "sp-state-machine",
  "sp-std",
  "sp-trie",
- "trie-db",
+ "trie-db 0.28.0",
 ]
 
 [[package]]
@@ -3564,7 +3564,7 @@ dependencies = [
  "sp-trie",
  "sp-version",
  "staging-xcm",
- "trie-db",
+ "trie-db 0.28.0",
 ]
 
 [[package]]
@@ -13817,6 +13817,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "reference-trie"
+version = "0.29.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07d0cce9052afc45cefde7166ad8b8a165c7136de8b57634c7789f14eebed06c"
+dependencies = [
+ "hash-db",
+ "hashbrown 0.13.2",
+ "keccak-hasher",
+ "parity-scale-codec",
+ "paste",
+ "trie-db 0.27.1",
+ "trie-root",
+]
+
+[[package]]
 name = "regalloc2"
 version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -17408,7 +17423,7 @@ dependencies = [
  "sp-trie",
  "thiserror",
  "tracing",
- "trie-db",
+ "trie-db 0.28.0",
 ]
 
 [[package]]
@@ -17530,7 +17545,7 @@ dependencies = [
  "thiserror",
  "tracing",
  "trie-bench",
- "trie-db",
+ "trie-db 0.28.0",
  "trie-root",
  "trie-standardmap",
 ]
@@ -18072,7 +18087,7 @@ dependencies = [
  "sp-runtime",
  "sp-state-machine",
  "sp-trie",
- "trie-db",
+ "trie-db 0.28.0",
 ]
 
 [[package]]
@@ -18147,7 +18162,7 @@ dependencies = [
  "sp-version",
  "substrate-test-runtime-client",
  "substrate-wasm-builder",
- "trie-db",
+ "trie-db 0.28.0",
 ]
 
 [[package]]
@@ -19043,9 +19058,22 @@ dependencies = [
  "keccak-hasher",
  "memory-db",
  "parity-scale-codec",
- "trie-db",
+ "trie-db 0.28.0",
  "trie-root",
  "trie-standardmap",
+]
+
+[[package]]
+name = "trie-db"
+version = "0.27.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "767abe6ffed88a1889671a102c2861ae742726f52e0a5a425b92c9fbfa7e9c85"
+dependencies = [
+ "hash-db",
+ "hashbrown 0.13.2",
+ "log",
+ "rustc-hex",
+ "smallvec",
 ]
 
 [[package]]
@@ -20850,9 +20878,12 @@ dependencies = [
  "hex",
  "jsonrpsee",
  "parity-scale-codec",
+ "reference-trie",
  "sc-rpc-api",
  "serde",
  "sp-api",
+ "sp-core",
+ "trie-root",
 ]
 
 [[package]]
