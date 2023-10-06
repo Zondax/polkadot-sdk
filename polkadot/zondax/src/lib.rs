@@ -5,6 +5,7 @@ use jsonrpsee::{
 use sc_rpc_api::DenyUnsafe;
 use sp_core::Blake2Hasher;
 use reference_trie::ReferenceTrieStreamNoExt as ReferenceTrieStream;
+use std::collections::HashMap;
 
 mod scale;
 
@@ -43,7 +44,7 @@ pub trait ZondaxApi {
 
 	/// Returns trie rootof the parameters
 	#[method(name = "zondax_trieRoot")]
-	async fn trie_root(&self) -> RpcResult<String>;
+	async fn trie_root(&self, input: HashMap<String, String>) -> RpcResult<String>;
 }
 
 #[async_trait]
@@ -61,8 +62,7 @@ impl ZondaxApiServer for Zondax {
 		Ok(scale_encode(test))
 	}
 
-	async fn trie_root(&self) -> RpcResult<String> {
-		let input: Vec<_> = vec![("1", "1")];
+	async fn trie_root(&self, input: HashMap<String, String>) -> RpcResult<String> {
 		let t = trie_root::trie_root_no_extension::<Blake2Hasher, ReferenceTrieStream, _, _, _>(input, None);
 
 		Ok(t.to_string())
