@@ -16,6 +16,12 @@ serde = { version = "1.0.188", features = ["derive"] }
 hex = "0.4.3"
 
 # state trie
-trie-root = "0.18.0"
+trie-root = "0.18"
 reference-trie = "0.29.1"
+memory-db = "0.32"
+trie-db = "=0.27"
+hash-db = "0.15"
+keccak-hasher  = "0.15"
+
+
 sp-core = { path = "../../substrate/primitives/core" }
