@@ -13,7 +13,6 @@ use sc_client_api::{backend, HeaderBackend};
 
 use sc_executor_common::runtime_blob::RuntimeBlob;
 
-use sc_rpc_api::DenyUnsafe;
 use sp_core::traits::FetchRuntimeCode;
 use sp_core::Blake2Hasher;
 
@@ -22,8 +21,6 @@ use sp_runtime::traits::Block as BlockT;
 use std::collections::HashMap;
 use trie_db::DBValue;
 use trie_db::TrieMut;
-
-use sp_core::Blake2Hasher;
 
 mod runtime;
 mod scale;
@@ -68,7 +65,7 @@ pub trait ZondaxApi {
 	async fn insert_and_delete(&self, input: HashMap<String, String>) -> RpcResult<Vec<String>>;
 
 	#[method(name = "zondax_host_api")]
-	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<String>;
+	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>>;
 }
 
 #[async_trait]
@@ -141,7 +138,7 @@ where
 		Ok(result)
 	}
 
-	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<String> {
+	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>> {
 		_ = self.deny_unsafe.check_if_safe();
 
 		// state for best block in the chain
@@ -165,9 +162,7 @@ where
 			RuntimeBlob::uncompress_if_needed(&code).map_err(error_into_rpc_err)?,
 		);
 
-		let response = runtime.call(&method, &args).map_err(error_into_rpc_err)?;
-
-		Ok(hex::encode(response))
+		runtime.call(&method, &args).map_err(error_into_rpc_err)
 	}
 }
 
