@@ -79,4 +79,4 @@ runtime-metrics = [
 network-protocol-staging = [ "service/network-protocol-staging" ]
 
 # Enable specification check endpoints
-specs-tests = ["service/specs-tests"]
+specs-tests = ["service/specs-tests", "db", "full-node"]

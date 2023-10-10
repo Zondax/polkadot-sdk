@@ -20896,6 +20896,7 @@ dependencies = [
  "hex",
  "jsonrpsee",
  "keccak-hasher 0.15.3",
+ "log",
  "memory-db",
  "parity-scale-codec",
  "reference-trie",

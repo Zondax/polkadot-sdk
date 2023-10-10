@@ -139,10 +139,12 @@ where
 	}
 
 	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>> {
+		log::info!("zondax_host_api handler");
 		_ = self.deny_unsafe.check_if_safe();
 
 		// state for best block in the chain
 		let hash = self.client.info().best_hash;
+		log::info!("state best_hash: {}", hash.to_string());
 		let state = self.backend.state_at(hash).map_err(error_into_rpc_err)?;
 
 		// get runtime code
@@ -156,11 +158,14 @@ where
 		let code = runtime_code
 			.fetch_runtime_code()
 			.ok_or(error_into_rpc_err("Could not fetch runtime code!"))?;
+		log::info!("Got runtime code ");
 
 		// create or runtime wasm executor
 		let mut runtime = crate::runtime::Runtime::new(
 			RuntimeBlob::uncompress_if_needed(&code).map_err(error_into_rpc_err)?,
 		);
+
+		log::info!("calling runtime: {}", method);
 
 		runtime.call(&method, &args).map_err(error_into_rpc_err)
 	}
