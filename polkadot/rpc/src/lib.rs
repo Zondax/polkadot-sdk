@@ -164,7 +164,8 @@ where
 		.into_rpc(),
 	)?;
 	io.merge(
-		SyncState::new(chain_spec, client, shared_authority_set, babe_worker_handle)?.into_rpc(),
+		SyncState::new(chain_spec, client.clone(), shared_authority_set, babe_worker_handle)?
+			.into_rpc(),
 	)?;
 
 	io.merge(
@@ -177,7 +178,7 @@ where
 	)?;
 
 	#[cfg(feature = "specs-tests")]
-	io.merge(Zondax::new(deny_unsafe).into_rpc())?;
+	io.merge(Zondax::new(deny_unsafe, client, backend).into_rpc())?;
 
 	Ok(io)
 }

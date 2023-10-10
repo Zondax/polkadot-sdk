@@ -9,8 +9,16 @@ repository.workspace = true
 
 [dependencies]
 sp-api = { path = "../../substrate/primitives/api" }
+sp-runtime = { path = "../../substrate/primitives/runtime"}
+sc-client-api = { path = "../../substrate/client/api"}
+sp-io = {path = "../../substrate/primitives/io"}
+sc-executor= {path = "../../substrate/client/executor"}
+sp-state-machine = {path = "../../substrate/primitives/state-machine"}
+sp-blockchain = {path = "../../substrate/primitives/blockchain"}
 jsonrpsee = { version = "0.16.2", features = ["client-core", "server", "macros"] }
 sc-rpc-api = { path = "../../substrate/client/rpc-api" }
+sc-executor-common = { path = "../../substrate/client/executor/common" }
+sp-keystore = { path = "../../substrate/primitives/keystore", default-features = false}
 codec = { package = "parity-scale-codec", version = "3.1.5"}
 serde = { version = "1.0.188", features = ["derive"] }
 hex = "0.4.3"
@@ -18,10 +26,10 @@ hex = "0.4.3"
 # state trie
 trie-root = "0.18"
 reference-trie = "0.29.1"
+
 memory-db = "0.32"
 trie-db = "=0.27"
 hash-db = "0.15"
 keccak-hasher  = "0.15"
-
-
 sp-core = { path = "../../substrate/primitives/core" }
+log = "0.4.20"
