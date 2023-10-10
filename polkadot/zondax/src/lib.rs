@@ -6,12 +6,10 @@ use jsonrpsee::{
 	types::error::{CallError, ErrorCode, ErrorObject},
 };
 use reference_trie::GenericNoExtensionLayout;
-use reference_trie::{RefTrieDBMutNoExt, ReferenceTrieStreamNoExt as ReferenceTrieStream};
+use reference_trie::ReferenceTrieStreamNoExt as ReferenceTrieStream;
 use sc_rpc_api::DenyUnsafe;
 
 use sc_client_api::{backend, HeaderBackend};
-
-use sc_executor_common::runtime_blob::RuntimeBlob;
 
 use sp_core::traits::FetchRuntimeCode;
 use sp_core::Blake2Hasher;
@@ -19,7 +17,6 @@ use sp_core::Blake2Hasher;
 use memory_db::{HashKey, MemoryDB};
 use sp_runtime::traits::Block as BlockT;
 use std::collections::HashMap;
-use trie_db::DBValue;
 use trie_db::TrieMut;
 
 mod runtime;
@@ -104,7 +101,7 @@ where
 		// let mut memtrie = RefTrieDBMutNoExt::new(&mut memdb, &mut root);
 		pub type RefPolkadotTrieDBMutNoExt<'a> =
 			trie_db::TrieDBMutBuilder<'a, GenericNoExtensionLayout<Blake2Hasher>>;
-		let mut memtriebuilder = RefPolkadotTrieDBMutNoExt::new(&mut memdb, &mut root);
+		let memtriebuilder = RefPolkadotTrieDBMutNoExt::new(&mut memdb, &mut root);
 		let mut memtrie = memtriebuilder.build();
 
 		let mut keys: Vec<_> = input
@@ -149,21 +146,16 @@ where
 
 		// get runtime code
 		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
-		// Runtime code so our execution method should be WasmExecutionMethod::Interpreted
-		// that is my take here.
-		let runtime_code =
-			// state_runtime_code.runtime_code().map_err(sp_blockchain::Error::RuntimeCode)?;
-			state_runtime_code.runtime_code().map_err(error_into_rpc_err)?;
+		let runtime_code = state_runtime_code.runtime_code().map_err(error_into_rpc_err)?;
 
 		let code = runtime_code
 			.fetch_runtime_code()
 			.ok_or(error_into_rpc_err("Could not fetch runtime code!"))?;
+
 		log::info!("Got runtime code ");
 
 		// create or runtime wasm executor
-		let mut runtime = crate::runtime::Runtime::new(
-			RuntimeBlob::uncompress_if_needed(&code).map_err(error_into_rpc_err)?,
-		);
+		let mut runtime = crate::runtime::Runtime::new(&code);
 
 		log::info!("calling runtime: {}", method);
 
