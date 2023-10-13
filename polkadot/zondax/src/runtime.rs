@@ -64,6 +64,25 @@ impl Runtime {
 		wasm_exec.read_runtime_version(&self.code, &mut ext)
 	}
 
+	/// Returns a list with the host functions names
+	pub fn host_functions(&self) -> Result<Vec<String>, String> {
+		use wasmtime::*;
+
+		let engine = Engine::default();
+		let module = Module::new(&engine, &self.code).map_err(|e| e.to_string())?;
+
+		// Extract and print the imports
+		let imports = module.imports();
+		let mut host_functions = Vec::new();
+
+		for import in imports {
+			if import.module() == "env" {
+				host_functions.push(import.name().to_string());
+			}
+		}
+		Ok(host_functions)
+	}
+
 	// pub fn call_and_decode<T: Decode>(&mut self, func: &str, args: &[u8]) -> T {
 	// 	Decode::decode(&mut self.call(func, args).as_slice())
 	// 		.expect("Failed to decode returned SCALE data")

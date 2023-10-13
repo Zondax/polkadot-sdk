@@ -33,3 +33,4 @@ hash-db = "0.15"
 keccak-hasher  = "0.15"
 sp-core = { path = "../../substrate/primitives/core" }
 log = "0.4.20"
+wasmtime = "13.0.0"

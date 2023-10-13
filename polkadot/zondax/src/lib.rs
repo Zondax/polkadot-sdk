@@ -63,6 +63,9 @@ pub trait ZondaxApi {
 
 	#[method(name = "zondax_host_api")]
 	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>>;
+
+	#[method(name = "zondax_host_api_functions")]
+	async fn host_api_functions(&self) -> RpcResult<Vec<String>>;
 }
 
 #[async_trait]
@@ -160,6 +163,29 @@ where
 		log::info!("calling runtime: {}", method);
 
 		runtime.call(&method, &args).map_err(error_into_rpc_err)
+	}
+
+	async fn host_api_functions(&self) -> RpcResult<Vec<String>> {
+		log::info!("zondax_host_api_functions handler");
+		_ = self.deny_unsafe.check_if_safe();
+
+		// state for best block in the chain
+		let hash = self.client.info().best_hash;
+		log::info!("state best_hash: {}", hash.to_string());
+		let state = self.backend.state_at(hash).map_err(error_into_rpc_err)?;
+
+		// get runtime code
+		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
+		let runtime_code = state_runtime_code.runtime_code().map_err(error_into_rpc_err)?;
+
+		let code = runtime_code
+			.fetch_runtime_code()
+			.ok_or(error_into_rpc_err("Could not fetch runtime code!"))?;
+
+		log::info!("Got runtime code ");
+
+		// create or runtime wasm executor
+		crate::runtime::Runtime::new(&code).host_functions().map_err(error_into_rpc_err)
 	}
 }
 
