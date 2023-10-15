@@ -142,18 +142,7 @@ where
 		log::info!("zondax_host_api handler");
 		_ = self.deny_unsafe.check_if_safe();
 
-		// state for best block in the chain
-		let hash = self.client.info().best_hash;
-		log::info!("state best_hash: {}", hash.to_string());
-		let state = self.backend.state_at(hash).map_err(error_into_rpc_err)?;
-
-		// get runtime code
-		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
-		let runtime_code = state_runtime_code.runtime_code().map_err(error_into_rpc_err)?;
-
-		let code = runtime_code
-			.fetch_runtime_code()
-			.ok_or(error_into_rpc_err("Could not fetch runtime code!"))?;
+		let code = self.get_runtime_code().map_err(error_into_rpc_err)?;
 
 		log::info!("Got runtime code ");
 
@@ -169,23 +158,35 @@ where
 		log::info!("zondax_host_api_functions handler");
 		_ = self.deny_unsafe.check_if_safe();
 
-		// state for best block in the chain
-		let hash = self.client.info().best_hash;
-		log::info!("state best_hash: {}", hash.to_string());
-		let state = self.backend.state_at(hash).map_err(error_into_rpc_err)?;
-
-		// get runtime code
-		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
-		let runtime_code = state_runtime_code.runtime_code().map_err(error_into_rpc_err)?;
-
-		let code = runtime_code
-			.fetch_runtime_code()
-			.ok_or(error_into_rpc_err("Could not fetch runtime code!"))?;
+		let code = self.get_runtime_code().map_err(error_into_rpc_err)?;
 
 		log::info!("Got runtime code ");
 
 		// create or runtime wasm executor
 		crate::runtime::Runtime::new(&code).host_functions().map_err(error_into_rpc_err)
+	}
+}
+
+impl<C, B, BA> Zondax<C, B, BA>
+where
+	C: Send + Sync + 'static + HeaderBackend<B>,
+	B: BlockT,
+	BA: 'static + backend::Backend<B>,
+{
+	fn get_runtime_code(&self) -> Result<Vec<u8>, String> {
+		// state for best block in the chain
+		let hash = self.client.info().best_hash;
+		log::info!("state best_hash: {}", hash.to_string());
+		let state = self.backend.state_at(hash).map_err(|e| e.to_string())?;
+
+		// get runtime code
+		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);
+		let runtime_code = state_runtime_code.runtime_code().map_err(|e| e.to_string())?;
+
+		runtime_code
+			.fetch_runtime_code()
+			.map(|cow| cow.into_owned())
+			.ok_or("Could not fetch runtime code!".to_string())
 	}
 }
 
