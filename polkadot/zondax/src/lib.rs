@@ -22,6 +22,8 @@ use trie_db::TrieMut;
 mod runtime;
 mod scale;
 
+use runtime::HostFunction;
+
 use scale::{scale_encode, ScaleMsg};
 
 /// The Zondax API. All methods are unsafe.
@@ -65,7 +67,7 @@ pub trait ZondaxApi {
 	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>>;
 
 	#[method(name = "zondax_host_api_functions")]
-	async fn host_api_functions(&self) -> RpcResult<Vec<String>>;
+	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>>;
 }
 
 #[async_trait]
@@ -154,7 +156,7 @@ where
 		runtime.call(&method, &args).map_err(error_into_rpc_err)
 	}
 
-	async fn host_api_functions(&self) -> RpcResult<Vec<String>> {
+	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>> {
 		log::info!("zondax_host_api_functions handler");
 		_ = self.deny_unsafe.check_if_safe();
 

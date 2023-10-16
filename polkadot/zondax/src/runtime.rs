@@ -9,6 +9,14 @@ use sp_keystore::{testing::MemoryKeystore, KeystoreExt};
 use sp_state_machine::TestExternalities;
 use std::sync::Arc;
 
+
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct HostFunction {
+	pub name: String,
+	pub params: Vec<String>,
+	pub results: Vec<String>
+}
+
 // Taken from polkadot-tests/adapters/substrate/host_api/utils.rs
 
 // Helpers to configure and call into runtime environment
@@ -65,7 +73,7 @@ impl Runtime {
 	}
 
 	/// Returns a list with the host functions names
-	pub fn host_functions(&self) -> Result<Vec<String>, String> {
+	pub fn host_functions(&self) -> Result<Vec<HostFunction>, String> {
 		use wasmtime::*;
 
 		let engine = Engine::default();
@@ -76,10 +84,22 @@ impl Runtime {
 		let mut host_functions = Vec::new();
 
 		for import in imports {
-			if import.module() == "env" {
-				host_functions.push(import.name().to_string());
+			if import.module() == "env" && import.ty().func().is_some() {
+				let func_ty = import.ty();
+				let func_ty = func_ty.func().clone().unwrap();
+
+				let params = func_ty.params().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the parameters
+				let results = func_ty.results().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the return types
+				let host_function = HostFunction {
+					name: import.name().to_owned(),
+					params,
+					results
+				};
+
+				host_functions.push(host_function);
 			}
 		}
+
 		Ok(host_functions)
 	}
 
