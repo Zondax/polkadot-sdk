@@ -178,7 +178,7 @@ where
 	)?;
 
 	#[cfg(feature = "specs-tests")]
-	io.merge(Zondax::new(deny_unsafe, client, backend).into_rpc())?;
+	io.merge(Zondax::new(deny_unsafe, client, backend)?.into_rpc())?;
 
 	Ok(io)
 }

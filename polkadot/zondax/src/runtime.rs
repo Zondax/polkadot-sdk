@@ -9,29 +9,27 @@ use sp_keystore::{testing::MemoryKeystore, KeystoreExt};
 use sp_state_machine::TestExternalities;
 use std::sync::Arc;
 
-
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HostFunction {
 	pub name: String,
 	pub params: Vec<String>,
-	pub results: Vec<String>
+	pub results: Vec<String>,
 }
 
 // Taken from polkadot-tests/adapters/substrate/host_api/utils.rs
 
 // Helpers to configure and call into runtime environment
 pub struct Runtime {
-	code: Vec<u8>,
 	ext: TestExternalities<Blake2Hasher>,
 	method: WasmExecutionMethod,
 }
 
 impl Runtime {
-	pub fn new(code: &[u8]) -> Self {
+	pub fn new() -> Self {
 		let method = WasmExecutionMethod::Compiled {
 			instantiation_strategy: WasmtimeInstantiationStrategy::RecreateInstance,
 		};
-		Runtime { code: code.to_owned(), ext: TestExternalities::default(), method }
+		Runtime { ext: TestExternalities::default(), method }
 	}
 
 	pub fn _with_keystore(mut self) -> Self {
@@ -46,14 +44,14 @@ impl Runtime {
 		self
 	}
 
-	pub fn call(&mut self, func: &str, args: &[u8]) -> Result<Vec<u8>, ExError> {
+	pub fn call(&mut self, func: &str, args: &[u8], code: &[u8]) -> Result<Vec<u8>, ExError> {
 		let mut extext = self.ext.ext();
 
 		let builder = WasmExecutor::<SubstrateHostFunctions>::builder();
 
 		let wasm_exec = builder.with_execution_method(self.method).build();
 
-		let blob = RuntimeBlob::uncompress_if_needed(&self.code)?;
+		let blob = RuntimeBlob::uncompress_if_needed(code)?;
 
 		wasm_exec.uncached_call(
 			blob,
@@ -64,20 +62,20 @@ impl Runtime {
 		)
 	}
 
-	pub fn _read_version(&mut self) -> Result<Vec<u8>, String> {
+	pub fn _read_version(&mut self, code: &[u8]) -> Result<Vec<u8>, String> {
 		let mut ext = self.ext.ext();
 		let builder = WasmExecutor::<SubstrateHostFunctions>::builder();
 
 		let wasm_exec = builder.with_execution_method(self.method).build();
-		wasm_exec.read_runtime_version(&self.code, &mut ext)
+		wasm_exec.read_runtime_version(code, &mut ext)
 	}
 
 	/// Returns a list with the host functions names
-	pub fn host_functions(&self) -> Result<Vec<HostFunction>, String> {
+	pub fn host_functions(&self, code: &[u8]) -> Result<Vec<HostFunction>, String> {
 		use wasmtime::*;
 
 		let engine = Engine::default();
-		let module = Module::new(&engine, &self.code).map_err(|e| e.to_string())?;
+		let module = Module::new(&engine, code).map_err(|e| e.to_string())?;
 
 		// Extract and print the imports
 		let imports = module.imports();
@@ -90,12 +88,47 @@ impl Runtime {
 
 				let params = func_ty.params().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the parameters
 				let results = func_ty.results().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the return types
-				let host_function = HostFunction {
-					name: import.name().to_owned(),
-					params,
-					results
-				};
+				let host_function =
+					HostFunction { name: import.name().to_owned(), params, results };
 
+				host_functions.push(host_function);
+			}
+		}
+
+		Ok(host_functions)
+	}
+
+	pub fn exported_functions(&self, code: &[u8]) -> Result<Vec<HostFunction>, String> {
+		use wasmtime::*;
+
+		log::info!("exported_functions handler");
+
+		let engine = Engine::default();
+		log::info!("engine done");
+		let module = Module::new(&engine, code).map_err(|e| {
+			let e = e.to_string();
+			log::error!("{}", e);
+			e
+		})?;
+		log::info!("module done!");
+
+		// Extract and print the exports
+		let exports = module.exports();
+		log::info!("exports ok");
+		let mut host_functions = Vec::new();
+
+		for export in exports {
+			log::info!("exports loop");
+			if let Some(func) = export.ty().func() {
+				// Check if the export is a function
+				let func_ty = func.clone();
+
+				let params = func_ty.params().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the parameters
+				let results = func_ty.results().map(|t| t.to_string()).collect::<Vec<_>>(); // getting the return types
+				let host_function =
+					HostFunction { name: export.name().to_owned(), params, results };
+
+				log::info!("pushing function: {}", export.name());
 				host_functions.push(host_function);
 			}
 		}

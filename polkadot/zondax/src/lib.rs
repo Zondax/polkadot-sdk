@@ -1,5 +1,9 @@
-use std::{marker::PhantomData, sync::Arc};
+use std::{
+	marker::PhantomData,
+	sync::{Arc, Mutex},
+};
 
+use codec::decode_from_bytes;
 use jsonrpsee::{
 	core::{async_trait, Error as JsonRpseeError, RpcResult},
 	proc_macros::rpc,
@@ -26,6 +30,13 @@ use runtime::HostFunction;
 
 use scale::{scale_encode, ScaleMsg};
 
+// Custom runtime-api provided by zondax for testing host-api
+const RUNTIME_STORAGE_SET: &str = "ZondaxTest_set_storage";
+const RUNTIME_STORAGE_GET: &str = "ZondaxTest_get_storage";
+const RUNTIME_KEY_EXISTS: &str = "ZondaxTest_storage_exists";
+// ZondaxTest_get_len
+const RUNTIME_TEST: &str = "ZondaxTest_get_len";
+
 /// The Zondax API. All methods are unsafe.
 // C:  Client.
 // B:  BlockT
@@ -34,23 +45,17 @@ pub struct Zondax<C, B, BA> {
 	deny_unsafe: DenyUnsafe,
 	client: Arc<C>,
 	backend: Arc<BA>,
+	// not ideal
+	runtime: Arc<Mutex<crate::runtime::Runtime>>,
 	_marker: PhantomData<(B, BA)>,
 }
 
-impl<C, B, BA> Zondax<C, B, BA> {
-	/// Creates a new instance of the Babe Rpc handler.
-	pub fn new(deny_unsafe: DenyUnsafe, client: Arc<C>, backend: Arc<BA>) -> Self {
-		Self { deny_unsafe, client, backend, _marker: Default::default() }
-	}
-}
+// impl<C, B, BA> Zondax<C, B, BA> {
+// }
 
 /// Provides rpc methods for interacting with Zondax.
 #[rpc(client, server)]
 pub trait ZondaxApi {
-	/// Returns 'Hello Zondax'.
-	#[method(name = "zondax_helloWorld")]
-	async fn say_hello_world(&self) -> RpcResult<String>;
-
 	/// Returns SCALE encoded value
 	#[method(name = "scale_encode")]
 	async fn encode(&self, test: ScaleMsg) -> RpcResult<String>;
@@ -68,6 +73,12 @@ pub trait ZondaxApi {
 
 	#[method(name = "zondax_host_api_functions")]
 	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>>;
+
+	#[method(name = "zondax_storage_set")]
+	async fn storage_set(&self, key: String, value: String) -> RpcResult<()>;
+
+	#[method(name = "zondax_storage_get")]
+	async fn storage_get(&self, key: String) -> RpcResult<Option<String>>;
 }
 
 #[async_trait]
@@ -77,10 +88,6 @@ where
 	B: BlockT,
 	BA: 'static + backend::Backend<B>,
 {
-	async fn say_hello_world(&self) -> RpcResult<String> {
-		Ok("Hello Zondax".to_string())
-	}
-
 	async fn encode(&self, test: ScaleMsg) -> RpcResult<String> {
 		// Called to avoid no_used warnings.
 		// this is not necessary as calling encode does not pose any security risk for the node under testing
@@ -144,28 +151,55 @@ where
 		log::info!("zondax_host_api handler");
 		_ = self.deny_unsafe.check_if_safe();
 
-		let code = self.get_runtime_code().map_err(error_into_rpc_err)?;
+		let code =
+			Self::get_runtime_code(&*self.client, &*self.backend).map_err(error_into_rpc_err)?;
 
-		log::info!("Got runtime code ");
+		log::info!("calling runtime method: {}", method);
 
-		// create or runtime wasm executor
-		let mut runtime = crate::runtime::Runtime::new(&code);
-
-		log::info!("calling runtime: {}", method);
-
-		runtime.call(&method, &args).map_err(error_into_rpc_err)
+		let mut runtime = self.runtime.lock().expect("Can not hold mutex");
+		runtime.call(&method, &args, &code).map_err(error_into_rpc_err)
 	}
 
 	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>> {
 		log::info!("zondax_host_api_functions handler");
 		_ = self.deny_unsafe.check_if_safe();
 
-		let code = self.get_runtime_code().map_err(error_into_rpc_err)?;
+		let code =
+			Self::get_runtime_code(&*self.client, &*self.backend).map_err(error_into_rpc_err)?;
 
-		log::info!("Got runtime code ");
+		let runtime = self.runtime.lock().expect("Can not hold mutex");
 
-		// create or runtime wasm executor
-		crate::runtime::Runtime::new(&code).host_functions().map_err(error_into_rpc_err)
+		runtime.exported_functions(&code).map_err(error_into_rpc_err)
+	}
+
+	async fn storage_set(&self, key: String, value: String) -> RpcResult<()> {
+		use codec::Encode;
+		_ = self.deny_unsafe.check_if_safe();
+		log::info!("storage_set handler");
+
+		let args = [key.as_bytes().to_vec(), value.into_bytes()].encode();
+
+		self.host_api(RUNTIME_STORAGE_SET.to_string(), args).await.map(|_| ())
+	}
+
+	async fn storage_get(&self, key: String) -> RpcResult<Option<String>> {
+		use codec::Encode;
+
+		_ = self.deny_unsafe.check_if_safe();
+
+		log::info!("storage_get handler");
+
+		let args = [key.as_bytes().to_vec()].encode();
+
+		let res = self.host_api(RUNTIME_STORAGE_GET.to_string(), args).await?;
+		log::info!("host_api_storage_get called: {:?}", res);
+
+		let res: Option<Vec<u8>> = decode_from_bytes(res.into()).map_err(error_into_rpc_err)?;
+
+		let res = res.map(|val| String::from_utf8(val).expect("value is a string"));
+		log::info!("{}:{:?}", key, res);
+
+		Ok(res)
 	}
 }
 
@@ -175,11 +209,23 @@ where
 	B: BlockT,
 	BA: 'static + backend::Backend<B>,
 {
-	fn get_runtime_code(&self) -> Result<Vec<u8>, String> {
+	/// Creates a new instance of the Babe Rpc handler.
+	pub fn new(
+		deny_unsafe: DenyUnsafe,
+		client: Arc<C>,
+		backend: Arc<BA>,
+	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+		let runtime = Arc::new(Mutex::new(crate::runtime::Runtime::new()));
+		log::info!("zodax_runtime created");
+
+		Ok(Self { deny_unsafe, client, backend, _marker: Default::default(), runtime })
+	}
+
+	fn get_runtime_code(client: &C, backend: &BA) -> Result<Vec<u8>, String> {
 		// state for best block in the chain
-		let hash = self.client.info().best_hash;
+		let hash = client.info().best_hash;
 		log::info!("state best_hash: {}", hash.to_string());
-		let state = self.backend.state_at(hash).map_err(|e| e.to_string())?;
+		let state = backend.state_at(hash).map_err(|e| e.to_string())?;
 
 		// get runtime code
 		let state_runtime_code = sp_state_machine::backend::BackendRuntimeCode::new(&state);

@@ -68,6 +68,7 @@ use primitives::{
 	ValidationCode, ValidationCodeHash, ValidatorId, ValidatorIndex, LOWEST_PUBLIC_ID,
 	PARACHAIN_KEY_TYPE_ID,
 };
+use sp_core::sr25519::{Public, Signature as SrSignature};
 use sp_core::OpaqueMetadata;
 use sp_mmr_primitives as mmr;
 use sp_runtime::{
@@ -126,10 +127,10 @@ include!(concat!(env!("OUT_DIR"), "/wasm_binary.rs"));
 /// Runtime version (Polkadot).
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("polkadot"),
+	spec_name: create_runtime_str!("rococo"),
 	impl_name: create_runtime_str!("parity-polkadot"),
 	authoring_version: 0,
-	spec_version: 9430,
+	spec_version: 9431,
 	impl_version: 0,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 24,
@@ -1637,14 +1638,44 @@ mod benches {
 
 sp_api::decl_runtime_apis! {
 	pub trait ZondaxTest {
-		fn zondax_data_len(data: [u8; 32]) -> u32;
+		fn get_len() -> i32;
+		fn set_storage(key: Vec<u8>, value: Vec<u8>);
+		fn get_storage(key: Vec<u8>) -> Option<Vec<u8>> ;
+		fn storage_exists(key: Vec<u8>) -> bool;
+		fn sr25519_generate(key_id: KeyTypeId, seed: Option<Vec<u8>>) -> Public;
+		fn sr25519_sign(key_id: KeyTypeId, public_key: &Public, msg: Vec<u8>) -> Option<SrSignature>;
+		fn sr25519_verify(sig: &SrSignature, msg: Vec<u8>, pub_key: &Public) -> bool;
 	}
 }
 
 sp_api::impl_runtime_apis! {
 	impl self::ZondaxTest<Block> for Runtime {
-		fn zondax_data_len(data: [u8; 32]) -> u32 {
-			data.len() as _
+		fn get_len() -> i32 {
+			return 10;
+		}
+
+		fn set_storage(key: Vec<u8>, value: Vec<u8>) {
+			sp_io::storage::set(&key, &value);
+		}
+
+		fn get_storage(key: Vec<u8>) -> Option<Vec<u8>> {
+			sp_io::storage::get(&key).map(|bytes| bytes.to_vec())
+		}
+
+		fn storage_exists(key: Vec<u8>) -> bool {
+			sp_io::storage::exists(&key)
+		}
+
+		// CRYPTO
+		fn sr25519_generate(key_id: KeyTypeId, seed: Option<Vec<u8>>) -> Public {
+			sp_io::crypto::sr25519_generate(key_id, seed)
+		}
+
+		fn sr25519_sign(key_id: KeyTypeId, public_key: &Public, msg: Vec<u8>) -> Option<SrSignature> {
+			sp_io::crypto::sr25519_sign(key_id, &public_key, &msg)
+		}
+		fn sr25519_verify(sig: &SrSignature, msg: Vec<u8>, pub_key: &Public) -> bool {
+			sp_io::crypto::sr25519_verify(&sig, &msg, &pub_key)
 		}
 	}
 
