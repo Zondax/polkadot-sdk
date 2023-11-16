@@ -26,13 +26,15 @@ pub struct Runtime {
 
 impl Runtime {
 	pub fn new() -> Self {
+		let ext = TestExternalities::default();
+
 		let method = WasmExecutionMethod::Compiled {
 			instantiation_strategy: WasmtimeInstantiationStrategy::RecreateInstance,
 		};
-		Runtime { ext: TestExternalities::default(), method }
+		Runtime { ext, method }
 	}
 
-	pub fn _with_keystore(mut self) -> Self {
+	pub fn with_keystore(mut self) -> Self {
 		let key_store = KeystoreExt(Arc::new(MemoryKeystore::new()));
 		self.ext.register_extension(key_store);
 		self
@@ -101,24 +103,18 @@ impl Runtime {
 	pub fn exported_functions(&self, code: &[u8]) -> Result<Vec<HostFunction>, String> {
 		use wasmtime::*;
 
-		log::info!("exported_functions handler");
-
 		let engine = Engine::default();
-		log::info!("engine done");
 		let module = Module::new(&engine, code).map_err(|e| {
 			let e = e.to_string();
 			log::error!("{}", e);
 			e
 		})?;
-		log::info!("module done!");
 
 		// Extract and print the exports
 		let exports = module.exports();
-		log::info!("exports ok");
 		let mut host_functions = Vec::new();
 
 		for export in exports {
-			log::info!("exports loop");
 			if let Some(func) = export.ty().func() {
 				// Check if the export is a function
 				let func_ty = func.clone();
@@ -128,16 +124,10 @@ impl Runtime {
 				let host_function =
 					HostFunction { name: export.name().to_owned(), params, results };
 
-				log::info!("pushing function: {}", export.name());
 				host_functions.push(host_function);
 			}
 		}
 
 		Ok(host_functions)
 	}
-
-	// pub fn call_and_decode<T: Decode>(&mut self, func: &str, args: &[u8]) -> T {
-	// 	Decode::decode(&mut self.call(func, args).as_slice())
-	// 		.expect("Failed to decode returned SCALE data")
-	// }
 }

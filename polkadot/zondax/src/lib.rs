@@ -73,12 +73,6 @@ pub trait ZondaxApi {
 
 	#[method(name = "zondax_host_api_functions")]
 	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>>;
-
-	#[method(name = "zondax_storage_set")]
-	async fn storage_set(&self, key: String, value: String) -> RpcResult<()>;
-
-	#[method(name = "zondax_storage_get")]
-	async fn storage_get(&self, key: String) -> RpcResult<Option<String>>;
 }
 
 #[async_trait]
@@ -149,6 +143,7 @@ where
 
 	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>> {
 		log::info!("zondax_host_api handler");
+
 		_ = self.deny_unsafe.check_if_safe();
 
 		let code =
@@ -171,36 +166,6 @@ where
 
 		runtime.exported_functions(&code).map_err(error_into_rpc_err)
 	}
-
-	async fn storage_set(&self, key: String, value: String) -> RpcResult<()> {
-		use codec::Encode;
-		_ = self.deny_unsafe.check_if_safe();
-		log::info!("storage_set handler");
-
-		let args = [key.as_bytes().to_vec(), value.into_bytes()].encode();
-
-		self.host_api(RUNTIME_STORAGE_SET.to_string(), args).await.map(|_| ())
-	}
-
-	async fn storage_get(&self, key: String) -> RpcResult<Option<String>> {
-		use codec::Encode;
-
-		_ = self.deny_unsafe.check_if_safe();
-
-		log::info!("storage_get handler");
-
-		let args = [key.as_bytes().to_vec()].encode();
-
-		let res = self.host_api(RUNTIME_STORAGE_GET.to_string(), args).await?;
-		log::info!("host_api_storage_get called: {:?}", res);
-
-		let res: Option<Vec<u8>> = decode_from_bytes(res.into()).map_err(error_into_rpc_err)?;
-
-		let res = res.map(|val| String::from_utf8(val).expect("value is a string"));
-		log::info!("{}:{:?}", key, res);
-
-		Ok(res)
-	}
 }
 
 impl<C, B, BA> Zondax<C, B, BA>
@@ -215,8 +180,8 @@ where
 		client: Arc<C>,
 		backend: Arc<BA>,
 	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-		let runtime = Arc::new(Mutex::new(crate::runtime::Runtime::new()));
-		log::info!("zodax_runtime created");
+		let mut runtime = crate::runtime::Runtime::new().with_keystore();
+		let runtime = Arc::new(Mutex::new(runtime));
 
 		Ok(Self { deny_unsafe, client, backend, _marker: Default::default(), runtime })
 	}
