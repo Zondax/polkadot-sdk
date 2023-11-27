@@ -3,7 +3,6 @@ use std::{
 	sync::{Arc, Mutex},
 };
 
-use codec::decode_from_bytes;
 use jsonrpsee::{
 	core::{async_trait, Error as JsonRpseeError, RpcResult},
 	proc_macros::rpc,
@@ -26,16 +25,7 @@ use trie_db::TrieMut;
 mod runtime;
 mod scale;
 
-use runtime::HostFunction;
-
 use scale::{scale_encode, ScaleMsg};
-
-// Custom runtime-api provided by zondax for testing host-api
-const RUNTIME_STORAGE_SET: &str = "ZondaxTest_set_storage";
-const RUNTIME_STORAGE_GET: &str = "ZondaxTest_get_storage";
-const RUNTIME_KEY_EXISTS: &str = "ZondaxTest_storage_exists";
-// ZondaxTest_get_len
-const RUNTIME_TEST: &str = "ZondaxTest_get_len";
 
 /// The Zondax API. All methods are unsafe.
 // C:  Client.
@@ -70,9 +60,6 @@ pub trait ZondaxApi {
 
 	#[method(name = "zondax_host_api")]
 	async fn host_api(&self, method: String, args: Vec<u8>) -> RpcResult<Vec<u8>>;
-
-	#[method(name = "zondax_host_api_functions")]
-	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>>;
 }
 
 #[async_trait]
@@ -154,18 +141,6 @@ where
 		let mut runtime = self.runtime.lock().expect("Can not hold mutex");
 		runtime.call(&method, &args, &code).map_err(error_into_rpc_err)
 	}
-
-	async fn host_api_functions(&self) -> RpcResult<Vec<HostFunction>> {
-		log::info!("zondax_host_api_functions handler");
-		_ = self.deny_unsafe.check_if_safe();
-
-		let code =
-			Self::get_runtime_code(&*self.client, &*self.backend).map_err(error_into_rpc_err)?;
-
-		let runtime = self.runtime.lock().expect("Can not hold mutex");
-
-		runtime.exported_functions(&code).map_err(error_into_rpc_err)
-	}
 }
 
 impl<C, B, BA> Zondax<C, B, BA>
@@ -180,7 +155,7 @@ where
 		client: Arc<C>,
 		backend: Arc<BA>,
 	) -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-		let mut runtime = crate::runtime::Runtime::new().with_keystore();
+		let runtime = crate::runtime::Runtime::new().with_keystore();
 		let runtime = Arc::new(Mutex::new(runtime));
 
 		Ok(Self { deny_unsafe, client, backend, _marker: Default::default(), runtime })
